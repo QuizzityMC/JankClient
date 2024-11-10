@@ -1,3 +1,4 @@
+import{ iOS }from"./login.js";
 class Contextmenu<x, y>{
 	static currentmenu: HTMLElement | "";
 	name: string;
@@ -37,7 +38,7 @@ class Contextmenu<x, y>{
 		return{};
 	}
 	addsubmenu(
-		text: string,
+		text: string|(()=>string),
 		onclick: (this: x, arg: y, e: MouseEvent) => void,
 		img = null,
 		shown: (this: x, arg: y) => boolean = _=>true,
@@ -52,11 +53,11 @@ class Contextmenu<x, y>{
 
 		let visibleButtons = 0;
 		for(const thing of this.buttons){
-			if(!thing[3].bind(addinfo).call(addinfo, other))continue;
+			if(!thing[3].call(addinfo, other))continue;
 			visibleButtons++;
 
 			const intext = document.createElement("button");
-			intext.disabled = !thing[4].bind(addinfo).call(addinfo, other);
+			intext.disabled = !thing[4].call(addinfo, other);
 			intext.classList.add("contextbutton");
 			if(thing[0] instanceof Function){
 				intext.textContent = thing[0]();
@@ -65,7 +66,10 @@ class Contextmenu<x, y>{
 			}
 			console.log(thing);
 			if(thing[5] === "button" || thing[5] === "submenu"){
-				intext.onclick = thing[1].bind(addinfo, other);
+				intext.onclick = (e)=>{
+					div.remove();
+					thing[1].call(addinfo, other,e)
+				};
 			}
 
 			div.appendChild(intext);
@@ -83,20 +87,48 @@ class Contextmenu<x, y>{
 		Contextmenu.currentmenu = div;
 		return this.div;
 	}
-	bindContextmenu(obj: HTMLElement, addinfo: x, other: y){
+	bindContextmenu(obj: HTMLElement, addinfo: x, other: y,touchDrag:(x:number,y:number)=>unknown=()=>{},touchEnd:(x:number,y:number)=>unknown=()=>{}){
 		const func = (event: MouseEvent)=>{
 			event.preventDefault();
 			event.stopImmediatePropagation();
 			this.makemenu(event.clientX, event.clientY, addinfo, other);
 		};
 		obj.addEventListener("contextmenu", func);
-		obj.addEventListener("touchstart",(event: TouchEvent)=>{
-			if(event.touches.length > 1){
-				event.preventDefault();
-				event.stopImmediatePropagation();
-				this.makemenu(event.touches[0].clientX, event.touches[0].clientY, addinfo, other);
-			}
-		},{passive:true});
+		if(iOS){
+			let hold:NodeJS.Timeout|undefined;
+			let x!:number;
+			let y!:number;
+			obj.addEventListener("touchstart",(event: TouchEvent)=>{
+				x=event.touches[0].pageX;
+				y=event.touches[0].pageY;
+				if(event.touches.length > 1){
+					event.preventDefault();
+					event.stopImmediatePropagation();
+					this.makemenu(event.touches[0].clientX, event.touches[0].clientY, addinfo, other);
+				}else{
+					//
+					event.stopImmediatePropagation();
+					hold=setTimeout(()=>{
+						if(lastx**2+lasty**2>10**2) return;
+						this.makemenu(event.touches[0].clientX, event.touches[0].clientY, addinfo, other);
+						console.log(obj);
+					},500)
+				}
+			},{passive: false});
+			let lastx=0;
+			let lasty=0;
+			obj.addEventListener("touchend",()=>{
+				if(hold){
+					clearTimeout(hold);
+				}
+				touchEnd(lastx,lasty);
+			});
+			obj.addEventListener("touchmove",(event)=>{
+				lastx=event.touches[0].pageX-x;
+				lasty=event.touches[0].pageY-y;
+				touchDrag(lastx,lasty);
+			});
+		}
 		return func;
 	}
 	static keepOnScreen(obj: HTMLElement){

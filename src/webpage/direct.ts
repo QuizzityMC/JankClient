@@ -12,6 +12,7 @@ import{
 import{ Permissions }from"./permissions.js";
 import{ SnowFlake }from"./snowflake.js";
 import{ Contextmenu }from"./contextmenu.js";
+import { I18n } from "./i18n.js";
 
 class Direct extends Guild{
 	declare channelids: { [key: string]: Group };
@@ -99,24 +100,24 @@ dmPermissions.setPermission("SPEAK", 1);
 dmPermissions.setPermission("STREAM", 1);
 dmPermissions.setPermission("USE_VAD", 1);
 
-// @ts-ignore
+// @ts-ignore I need to look into this lol
 class Group extends Channel{
 	user: User;
 	static contextmenu = new Contextmenu<Group, undefined>("channel menu");
 	static setupcontextmenu(){
-		this.contextmenu.addbutton("Copy DM id", function(this: Group){
+		this.contextmenu.addbutton(()=>I18n.getTranslation("DMs.copyId"), function(this: Group){
 			navigator.clipboard.writeText(this.id);
 		});
 
-		this.contextmenu.addbutton("Mark as read", function(this: Group){
+		this.contextmenu.addbutton(()=>I18n.getTranslation("DMs.markRead"), function(this: Group){
 			this.readbottom();
 		});
 
-		this.contextmenu.addbutton("Close DM", function(this: Group){
+		this.contextmenu.addbutton(()=>I18n.getTranslation("DMs.close"), function(this: Group){
 			this.deleteChannel();
 		});
 
-		this.contextmenu.addbutton("Copy user ID", function(){
+		this.contextmenu.addbutton(()=>I18n.getTranslation("user.copyId"), function(){
 			navigator.clipboard.writeText(this.user.id);
 		});
 	}
@@ -162,6 +163,8 @@ class Group extends Channel{
 		(div as any).myinfo = this;
 		div.onclick = _=>{
 			this.getHTML();
+			const toggle = document.getElementById("maintoggle") as HTMLInputElement;
+			toggle.checked = true;
 		};
 
 		return div;
@@ -179,10 +182,7 @@ class Group extends Channel{
 		const prom = this.infinite.delete();
 		history.pushState(null, "", "/channels/" + this.guild_id + "/" + this.id);
 		this.localuser.pageTitle("@" + this.name);
-		(document.getElementById("channelTopic") as HTMLElement).setAttribute(
-			"hidden",
-			""
-		);
+		(document.getElementById("channelTopic") as HTMLElement).setAttribute("hidden","");
 
 		const loading = document.getElementById("loadingdiv") as HTMLDivElement;
 		Channel.regenLoadingMessages();
@@ -292,6 +292,8 @@ class Group extends Channel{
 			div.onclick = _=>{
 				this.guild.loadGuild();
 				this.getHTML();
+				const toggle = document.getElementById("maintoggle") as HTMLInputElement;
+				toggle.checked = true;
 			};
 		}else if(current){
 			current.remove();
@@ -306,4 +308,5 @@ class Group extends Channel{
 	}
 }
 export{ Direct, Group };
-Group.setupcontextmenu();
+
+Group.setupcontextmenu()
